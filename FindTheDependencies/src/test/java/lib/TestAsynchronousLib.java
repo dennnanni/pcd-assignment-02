@@ -6,10 +6,10 @@ import io.vertx.junit5.VertxTestContext;
 import lib.reports.ClassDepReport;
 import lib.reports.PackageDepsReport;
 import lib.reports.ProjectDepsReport;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
+import java.io.IOException;
 import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -17,13 +17,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 @ExtendWith(VertxExtension.class)
 public class TestAsynchronousLib {
 
+    String currentPath = new java.io.File(".").getCanonicalPath();
+
+    public TestAsynchronousLib() throws IOException {
+    }
+
     @Test
     public void testGetClassDependencies(Vertx vertx, VertxTestContext testContext) {
         // Create an instance of the DependencyAnalizerLib class
         DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
 
         // Define the path to the source file
-        Path classSrcFile = Path.of("C:\\Users\\denno\\Desktop\\PCD\\pcd-assignment-02\\FindTheDependencies\\src\\main\\java\\lib\\DependencyAnalyserLib.java");
+        Path classSrcFile = Path.of(currentPath + "\\src\\main\\java\\lib\\DependencyAnalyserLib.java");
 
         // Call the getClassDependencies method and handle the result
         dependencyAnalyzer.getClassDependencies(classSrcFile).onComplete(ar -> {
@@ -45,7 +50,7 @@ public class TestAsynchronousLib {
     public void testGetPackageDependencies(Vertx vertx, VertxTestContext testContext) {
         DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
 
-        Path packageSrc = Path.of("C:\\Users\\denno\\Desktop\\PCD\\pcd-assignment-02\\FindTheDependencies\\src");
+        Path packageSrc = Path.of(currentPath + "\\src");
 
         dependencyAnalyzer.getPackageDependencies(packageSrc).onComplete(ar -> {
             if (ar.succeeded()) {
@@ -70,7 +75,7 @@ public class TestAsynchronousLib {
     public void testGetProjectDependencies(Vertx vertx, VertxTestContext testContext) {
         DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
 
-        Path projectSrc = Path.of("C:\\Users\\denno\\Desktop\\PCD\\pcd-assignment-02\\FindTheDependencies");
+        Path projectSrc = Path.of(currentPath);
 
         dependencyAnalyzer.getProjectDependencies(projectSrc).onComplete(ar -> {
             if (ar.succeeded()) {
