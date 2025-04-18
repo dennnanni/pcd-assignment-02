@@ -45,7 +45,7 @@ public class TestAsynchronousLib {
     public void testGetPackageDependencies(Vertx vertx, VertxTestContext testContext) {
         DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
 
-        Path packageSrc = Path.of("C:\\Users\\denno\\Desktop\\PCD\\pcd-assignment-02\\FindTheDependencies\\src\\main");
+        Path packageSrc = Path.of("C:\\Users\\denno\\Desktop\\PCD\\pcd-assignment-02\\FindTheDependencies\\src");
 
         dependencyAnalyzer.getPackageDependencies(packageSrc).onComplete(ar -> {
             if (ar.succeeded()) {
@@ -57,6 +57,34 @@ public class TestAsynchronousLib {
                     System.out.println("Class Name: " + classReport.getClassName());
                     System.out.println("Package Name: " + classReport.getPackageName());
                     System.out.println("Dependencies: " + classReport.getDependencies());
+                }
+
+                testContext.completeNow();
+            } else {
+                testContext.failNow(ar.cause());
+            }
+        });
+    }
+
+    @Test
+    public void testGetProjectDependencies(Vertx vertx, VertxTestContext testContext) {
+        DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
+
+        Path projectSrc = Path.of("C:\\Users\\denno\\Desktop\\PCD\\pcd-assignment-02\\FindTheDependencies");
+
+        dependencyAnalyzer.getProjectDependencies(projectSrc).onComplete(ar -> {
+            if (ar.succeeded()) {
+                ProjectDepsReport report = ar.result();
+                System.out.println("Project Name: " + report.getProjectName());
+                System.out.println("Project Dependencies: " + report.getPackages());
+                for (PackageDepsReport packageReport : report.getPackages()) {
+                    System.out.println("-----------");
+                    System.out.println("Package Name: " + packageReport.getPackageName());
+                    for (ClassDepReport classReport : packageReport.getDependencies()) {
+                        System.out.println("Class Name: " + classReport.getClassName());
+                        System.out.println("Package Name: " + classReport.getPackageName());
+                        System.out.println("Dependencies: " + classReport.getDependencies());
+                    }
                 }
 
                 testContext.completeNow();

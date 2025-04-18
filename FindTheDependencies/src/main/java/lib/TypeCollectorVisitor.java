@@ -19,10 +19,4 @@ public class TypeCollectorVisitor extends VoidVisitorAdapter<Set<String>> {
         super.visit(n, collector);
         n.getType().ifClassOrInterfaceType(t -> {collector.add(t.getNameAsString());}); // new Type()
     }
-
-    @Override
-    public void visit(MarkerAnnotationExpr n, Set<String> collector) {
-        super.visit(n, collector);
-        collector.add(n.getNameAsString()); // annotation is a type
-    }
 }

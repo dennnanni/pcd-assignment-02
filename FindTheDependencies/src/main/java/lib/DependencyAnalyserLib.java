@@ -23,6 +23,8 @@ import io.vertx.core.Future;
 
 public class DependencyAnalyserLib {
 
+    private static final String ENTRY_POINT_FOLDER_NAME = "java";
+    public static final String DEFAULT_PACKAGE = "java";
     private final Vertx vertx;
 
     public DependencyAnalyserLib(Vertx vertx) {
@@ -37,7 +39,7 @@ public class DependencyAnalyserLib {
             .compose(this::visitAST)
             .onSuccess(packageAndDeps -> {
                 String packageName = packageAndDeps.keySet().stream().findFirst()
-                        .orElse("default");
+                        .orElse(DEFAULT_PACKAGE);
                 String className = classSrcFile.getFileName().toString();
                 ClassDepReport report = new ClassDepReport(className, packageName, packageAndDeps.get(packageName));
                 reportPromise.complete(report);
@@ -70,7 +72,7 @@ public class DependencyAnalyserLib {
 
             String packageName = cu.getPackageDeclaration()
                     .map(NodeWithName::getNameAsString)
-                    .orElse("default");
+                    .orElse(DEFAULT_PACKAGE);
 
             packageAndDependencies.put(packageName, usedTypes);
             return packageAndDependencies;
@@ -90,41 +92,128 @@ public class DependencyAnalyserLib {
         // Combine the results into a PackageDepsReport
         Promise<PackageDepsReport> promise = Promise.promise();
 
+        getFilesPaths(packageSrcFolder)
+            .compose(javaFiles -> {
+                List<Future<ClassDepReport>> dependencyFutures = new ArrayList<>();
+
+                for (Path file : javaFiles) {
+                    dependencyFutures.add(getClassDependencies(file));
+                }
+
+                return Future.all(dependencyFutures);
+            }).onSuccess(cf -> {
+                Set<ClassDepReport> dependencies = new HashSet<>();
+                String packageName = packageSrcFolder.getFileName().toString();
+
+                for (int i = 0; i < cf.size(); i++) {
+                    ClassDepReport report = cf.resultAt(i);
+                    dependencies.add(report);
+                }
+
+                PackageDepsReport report = new PackageDepsReport(packageName, dependencies);
+                promise.complete(report);
+            }).onFailure(promise::fail);
+
+        return promise.future();
+    }
+
+    public Future<Set<Path>> getFilesPaths(Path projectSrcFolder) {
+        Promise<Set<Path>> promise = Promise.promise();
         vertx.executeBlocking(() -> {
-            try (Stream<Path> paths = Files.walk(packageSrcFolder)) {
+            try (Stream<Path> paths = Files.walk(projectSrcFolder)) {
                 return paths
                         .filter(Files::isRegularFile)
                         .filter(path -> path.toString().endsWith(".java"))
-                        .collect(Collectors.toList());
+                        .collect(Collectors.toSet());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
-        }).compose(javaFiles -> {
-            List<Future<ClassDepReport>> dependencyFutures = new ArrayList<>();
+        }).onSuccess(promise::complete)
+        .onFailure(promise::fail);
 
-            for (Path file : javaFiles) {
-                dependencyFutures.add(getClassDependencies(file));
+        return promise.future();
+    }
+
+    public Future<ProjectDepsReport> getProjectDependencies(Path projectFolder) {
+        Promise<ProjectDepsReport> promise = Promise.promise();
+
+        Future<Path> entrypoint = findEntryPointFolder(projectFolder);
+
+        Future<Set<PackageDepsReport>> packageReports = entrypoint.compose(ep -> {
+            List<Future<PackageDepsReport>> packagePromise = new ArrayList<>();
+            try (Stream<Path> paths = Files.list(ep)) {
+                paths.filter(Files::isDirectory)
+                        .filter(path -> !path.equals(ep))
+                        .forEach(path -> packagePromise.add(getPackageDependencies(path)));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
 
-            return Future.all(dependencyFutures);
-        }).onSuccess(cf -> {
-            Set<ClassDepReport> dependencies = new HashSet<>();
-            String packageName = "";
+            return Future.all(packagePromise).map(cf -> {
+                Set<PackageDepsReport> packages = new HashSet<>();
+                for (int i = 0; i < cf.size(); i++) {
+                    PackageDepsReport report = cf.resultAt(i);
+                    packages.add(report);
+                }
+                return packages;
+            });
+        });
 
-            for (int i = 0; i < cf.size(); i++) {
-                ClassDepReport report = cf.resultAt(i);
-                dependencies.add(report);
+        Future<Set<ClassDepReport>> classReports = entrypoint.compose(ep -> {
+            List<Future<ClassDepReport>> classPromise = new ArrayList<>();
+            try (Stream<Path> paths = Files.list(ep)) {
+                paths.filter(Files::isRegularFile)
+                        .filter(path -> path.toString().endsWith(".java"))
+                        .forEach(path -> classPromise.add(getClassDependencies(path)));
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
 
-            PackageDepsReport report = new PackageDepsReport(packageName, dependencies);
-            promise.complete(report);
+            return Future.all(classPromise).map(cf -> {
+                Set<ClassDepReport> classes = new HashSet<>();
+                for (int i = 0; i < cf.size(); i++) {
+                    ClassDepReport report = cf.resultAt(i);
+                    classes.add(report);
+                }
+                return classes;
+            });
+        });
+
+        Future.all(packageReports, classReports).onSuccess(cf -> {
+            Set<PackageDepsReport> packages = cf.resultAt(0);
+            Set<ClassDepReport> classes = cf.resultAt(1);
+            packages.add(new PackageDepsReport(entrypoint.result().getFileName().toString(), classes));
+
+            ProjectDepsReport projectReport = new ProjectDepsReport(projectFolder.getFileName().toString(), packages);
+            promise.complete(projectReport);
         }).onFailure(promise::fail);
 
         return promise.future();
     }
 
-    public ProjectDepsReport getProjectDependencies(String projectSrcFolder) {
-        throw new UnsupportedOperationException();
+    private Future<Path> findEntryPointFolder(Path startingPath) {
+        Promise<Path> promise = Promise.promise();
+
+        vertx.executeBlocking(() -> {
+                try (Stream<Path> paths = Files.walk(startingPath)) {
+                    Optional<Path> srcFolder = paths
+                            .filter(Files::isDirectory)
+                            .filter(path -> path.getFileName().toString().equals(ENTRY_POINT_FOLDER_NAME))
+                            .findFirst();
+
+                    if (srcFolder.isPresent()) {
+                        return srcFolder.get();
+                    } else {
+                        throw new RuntimeException(ENTRY_POINT_FOLDER_NAME + " folder not found.");
+                    }
+
+                } catch (IOException e) {
+                    throw new RuntimeException("Error walking file tree: " + e.getMessage(), e);
+                }
+            }).onSuccess(promise::complete)
+            .onFailure(promise::fail);
+
+        return promise.future();
     }
 
 }
