@@ -11,34 +11,21 @@ public class TypeCollectorVisitor extends VoidVisitorAdapter<Set<String>> {
     @Override
     public void visit(ClassOrInterfaceType n, Set<String> collector) {
         super.visit(n, collector);
+        System.out.println("ClassOrInterfaceType: " + n.getNameAsString());
         collector.add(n.getNameAsString());  // capture used type
     }
 
     @Override
     public void visit(ObjectCreationExpr n, Set<String> collector) {
         super.visit(n, collector);
-        n.getType().ifClassOrInterfaceType(t -> collector.add(t.getNameAsString())); // new Type()
-    }
-
-    @Override
-    public void visit(MethodCallExpr n, Set<String> collector) {
-        super.visit(n, collector);
-        n.getScope().ifPresent(scope -> {
-            if (scope.isNameExpr()) {
-                collector.add(scope.asNameExpr().getNameAsString()); // static call? object call?
-            }
-        });
-    }
-
-    @Override
-    public void visit(FieldAccessExpr n, Set<String> collector) {
-        super.visit(n, collector);
-        collector.add(n.getScope().toString());  // likely a class name in static access
+        n.getType().ifClassOrInterfaceType(t -> {
+            System.out.println("Class or interface: " + t.getNameAsString()); collector.add(t.getNameAsString());}); // new Type()
     }
 
     @Override
     public void visit(MarkerAnnotationExpr n, Set<String> collector) {
         super.visit(n, collector);
+        System.out.println("MarkerAnnotationExpr: " + n.getNameAsString());
         collector.add(n.getNameAsString()); // annotation is a type
     }
 }
