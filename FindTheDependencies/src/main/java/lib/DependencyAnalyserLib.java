@@ -4,14 +4,20 @@ import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.nodeTypes.NodeWithName;
+import io.vertx.core.CompositeFuture;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import lib.reports.ClassDepReport;
 import lib.reports.PackageDepsReport;
 import lib.reports.ProjectDepsReport;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import io.vertx.core.Future;
 
@@ -78,12 +84,43 @@ public class DependencyAnalyserLib {
         return vertx.executeBlocking(() -> StaticJavaParser.parse(sourceCode), false);
     }
 
-    public PackageDepsReport getPackageDependencies(String packageSrcFolder) {
+    public Future<PackageDepsReport> getPackageDependencies(Path packageSrcFolder) {
         // Recursively get all class files in the package directory
         // For each class file, call getClassDependencies
         // Combine the results into a PackageDepsReport
+        Promise<PackageDepsReport> promise = Promise.promise();
 
-        throw new UnsupportedOperationException();
+        vertx.executeBlocking(() -> {
+            try (Stream<Path> paths = Files.walk(packageSrcFolder)) {
+                return paths
+                        .filter(Files::isRegularFile)
+                        .filter(path -> path.toString().endsWith(".java"))
+                        .collect(Collectors.toList());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }).compose(javaFiles -> {
+            List<Future<ClassDepReport>> dependencyFutures = new ArrayList<>();
+
+            for (Path file : javaFiles) {
+                dependencyFutures.add(getClassDependencies(file));
+            }
+
+            return Future.all(dependencyFutures);
+        }).onSuccess(cf -> {
+            Set<ClassDepReport> dependencies = new HashSet<>();
+            String packageName = "";
+
+            for (int i = 0; i < cf.size(); i++) {
+                ClassDepReport report = cf.resultAt(i);
+                dependencies.add(report);
+            }
+
+            PackageDepsReport report = new PackageDepsReport(packageName, dependencies);
+            promise.complete(report);
+        }).onFailure(promise::fail);
+
+        return promise.future();
     }
 
     public ProjectDepsReport getProjectDependencies(String projectSrcFolder) {
