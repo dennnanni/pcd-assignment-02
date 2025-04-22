@@ -35,7 +35,7 @@ public class TestAsynchronousLib {
         dependencyAnalyzer.getClassDependencies(classSrcFile).onComplete(ar -> {
             if (ar.succeeded()) {
                 ClassDepReport report = ar.result();
-                assertEquals("BoidsSimulator.java", report.getClassName());
+                assertEquals("BoidsSimulator", report.getClassName());
                 assertEquals("pcd.ass01.threads", report.getPackageName());
                 assertTrue(report.getDependencies().containsAll(List.of("BoidsModel", "Barrier", "SimulationStateMonitor", "SyncWorkersMonitor")));
                 assertFalse(report.getDependencies().contains("Latch"));
@@ -56,7 +56,7 @@ public class TestAsynchronousLib {
             if (ar.succeeded()) {
                 PackageDepsReport report = ar.result();
                 assertEquals("tasks", report.getPackageName());
-                var classNames = report.getDependencies().stream()
+                var classNames = report.getClasses().stream()
                         .map(ClassDepReport::getClassName)
                         .toList();
                 assertTrue(classNames.containsAll(List.of("Barrier", "Boid", "BoidsModel", "SimulationStateMonitor", "BoidsView", "UpdatePositionTask", "UpdateVelocityTask")));
@@ -80,8 +80,8 @@ public class TestAsynchronousLib {
                 var packageNames = report.getPackages().stream()
                         .map(PackageDepsReport::getPackageName)
                         .toList();
-                assertTrue(packageNames.containsAll(List.of("pcd", "java")));
-                assertEquals(2, packageNames.size());
+                assertTrue(packageNames.contains("java"));
+                assertEquals(1, packageNames.size());
                 testContext.completeNow();
             } else {
                 testContext.failNow(ar.cause());
@@ -115,25 +115,33 @@ public class TestAsynchronousLib {
     public void testPrintPackageDependencies(Vertx vertx, VertxTestContext testContext) {
         DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
 
-        Path packageSrc = Path.of(currentPath + "\\pcd-assignment-01\\src\\main\\java\\pcd\\ass01\\tasks");
+        Path packageSrc = Path.of(currentPath + "\\pcd-assignment-01\\src\\main\\java");
 
         dependencyAnalyzer.getPackageDependencies(packageSrc).onComplete(ar -> {
             if (ar.succeeded()) {
                 PackageDepsReport report = ar.result();
-                System.out.println("Package Name: " + report.getPackageName());
-                System.out.println("Package Dependencies: " + report.getDependencies());
-                for (ClassDepReport classReport : report.getDependencies()) {
-                    System.out.println("-----------");
-                    System.out.println("Class Name: " + classReport.getClassName());
-                    System.out.println("Package Name: " + classReport.getPackageName());
-                    System.out.println("Dependencies: " + classReport.getDependencies());
-                }
+                recursivePrint(report);
 
                 testContext.completeNow();
             } else {
                 testContext.failNow(ar.cause());
             }
         });
+    }
+
+    private void recursivePrint(PackageDepsReport packageReport) {
+        System.out.println("Package Name: " + packageReport.getPackageName());
+        System.out.println("Package Dependencies: " + packageReport.getClasses());
+        System.out.println("------------");
+        for (ClassDepReport classReport : packageReport.getClasses()) {
+            System.out.println("Class Name: " + classReport.getClassName());
+            System.out.println("Package Name: " + classReport.getPackageName());
+            System.out.println("Dependencies: " + classReport.getDependencies());
+        }
+        System.out.println("------------");
+        for (PackageDepsReport subPackage : packageReport.getPackages()) {
+            recursivePrint(subPackage);
+        }
     }
 
     @Test
@@ -148,13 +156,7 @@ public class TestAsynchronousLib {
                 System.out.println("Project Name: " + report.getProjectName());
                 System.out.println("Project Dependencies: " + report.getPackages());
                 for (PackageDepsReport packageReport : report.getPackages()) {
-                    System.out.println("-----------");
-                    System.out.println("Package Name: " + packageReport.getPackageName());
-                    for (ClassDepReport classReport : packageReport.getDependencies()) {
-                        System.out.println("Class Name: " + classReport.getClassName());
-                        System.out.println("Package Name: " + classReport.getPackageName());
-                        System.out.println("Dependencies: " + classReport.getDependencies());
-                    }
+                    recursivePrint(packageReport);
                 }
 
                 testContext.completeNow();

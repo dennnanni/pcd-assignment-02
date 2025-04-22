@@ -85,44 +85,61 @@ public class DependencyAnalyserLib {
     }
 
     public Future<PackageDepsReport> getPackageDependencies(Path packageSrcFolder) {
-        // Recursively get all class files in the package directory
-        // For each class file, call getClassDependencies
-        // Combine the results into a PackageDepsReport
         Promise<PackageDepsReport> promise = Promise.promise();
 
-        getFilesPaths(packageSrcFolder)
+        Future<Set<ClassDepReport>> classReports = getFilesOrDirectoriesPaths(packageSrcFolder, true)
             .compose(javaFiles -> {
                 List<Future<ClassDepReport>> dependencyFutures = new ArrayList<>();
-
                 for (Path file : javaFiles) {
                     dependencyFutures.add(getClassDependencies(file));
                 }
-
                 return Future.all(dependencyFutures);
-            }).onSuccess(cf -> {
-                Set<ClassDepReport> dependencies = new HashSet<>();
-                String packageName = packageSrcFolder.getFileName().toString();
-
+            }).map(cf -> {
+                Set<ClassDepReport> classesReport = new HashSet<>();
                 for (int i = 0; i < cf.size(); i++) {
                     ClassDepReport report = cf.resultAt(i);
-                    dependencies.add(report);
+                    classesReport.add(report);
                 }
+                return classesReport;
+            });
 
-                PackageDepsReport report = new PackageDepsReport(packageName, dependencies);
-                promise.complete(report);
-            }).onFailure(promise::fail);
+        Future<Set<PackageDepsReport>> packageReports = getFilesOrDirectoriesPaths(packageSrcFolder, false)
+                .compose(directories -> {
+                    List<Future<PackageDepsReport>> dependencyFutures = new ArrayList<>();
+                    for (Path dir : directories) {
+                        dependencyFutures.add(getPackageDependencies(dir));
+                    }
+                    return Future.all(dependencyFutures);
+                }).map(cf -> {
+                    Set<PackageDepsReport> packagesReport = new HashSet<>();
+                    for (int i = 0; i < cf.size(); i++) {
+                        PackageDepsReport report = cf.resultAt(i);
+                        packagesReport.add(report);
+                    }
+                    return packagesReport;
+                });
+
+        Future.all(classReports, packageReports).onSuccess(cf -> {
+            Set<ClassDepReport> classes = cf.resultAt(0);
+            Set<PackageDepsReport> packages = cf.resultAt(1);
+            String packageName = packageSrcFolder.getFileName().toString();
+            PackageDepsReport packageReport = new PackageDepsReport(packageName, classes, packages);
+            promise.complete(packageReport);
+        }).onFailure(promise::fail);
 
         return promise.future();
     }
 
-    public Future<Set<Path>> getFilesPaths(Path projectSrcFolder) {
+    public Future<Set<Path>> getFilesOrDirectoriesPaths(Path projectSrcFolder, boolean onlyFiles) {
         Promise<Set<Path>> promise = Promise.promise();
         vertx.executeBlocking(() -> {
-            try (Stream<Path> paths = Files.walk(projectSrcFolder)) {
-                return paths
-                        .filter(Files::isRegularFile)
-                        .filter(path -> path.toString().endsWith(".java"))
-                        .collect(Collectors.toSet());
+            try (Stream<Path> paths = Files.list(projectSrcFolder)) {
+                var filesOrDirectoriesPaths = paths
+                        .filter(onlyFiles ? Files::isRegularFile : Files::isDirectory);
+                if (onlyFiles) {
+                    filesOrDirectoriesPaths = filesOrDirectoriesPaths.filter(path -> path.toString().endsWith(".java"));
+                }
+                return filesOrDirectoriesPaths.collect(Collectors.toSet());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -178,11 +195,12 @@ public class DependencyAnalyserLib {
         });
 
         Future.all(packageReports, classReports).onSuccess(cf -> {
-            Set<PackageDepsReport> packages = cf.resultAt(0);
+            Set<PackageDepsReport> packages = new HashSet<>();
             Set<ClassDepReport> classes = cf.resultAt(1);
-            packages.add(new PackageDepsReport(entrypoint.result().getFileName().toString(), classes));
+            packages.add(new PackageDepsReport(entrypoint.result().getFileName().toString(), classes, cf.resultAt(0)));
 
             ProjectDepsReport projectReport = new ProjectDepsReport(projectFolder.getFileName().toString(), packages);
+
             promise.complete(projectReport);
         }).onFailure(promise::fail);
 
