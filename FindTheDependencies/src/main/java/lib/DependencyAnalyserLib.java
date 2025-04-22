@@ -38,7 +38,7 @@ public class DependencyAnalyserLib {
             .onSuccess(packageAndDeps -> {
                 String packageName = packageAndDeps.keySet().stream().findFirst()
                         .orElse(DEFAULT_PACKAGE);
-                String className = classSrcFile.getFileName().toString();
+                String className = classSrcFile.getFileName().toString().replace(".java", "");
                 ClassDepReport report = new ClassDepReport(className, packageName, packageAndDeps.get(packageName));
                 reportPromise.complete(report);
             })
