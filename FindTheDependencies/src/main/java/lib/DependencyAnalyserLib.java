@@ -1,12 +1,8 @@
 package lib;
 
-import com.github.javaparser.JavaParser;
-import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.PackageDeclaration;
 import com.github.javaparser.ast.nodeTypes.NodeWithName;
-import io.vertx.core.CompositeFuture;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
 import lib.reports.ClassDepReport;
@@ -16,7 +12,6 @@ import lib.reports.ProjectDepsReport;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -27,6 +22,7 @@ public class DependencyAnalyserLib {
 
     private static final String ENTRY_POINT_FOLDER_NAME = "java";
     public static final String DEFAULT_PACKAGE = "java";
+    public static final String SRC = "src";
     private final Vertx vertx;
 
     public DependencyAnalyserLib(Vertx vertx) {
@@ -139,7 +135,7 @@ public class DependencyAnalyserLib {
     public Future<ProjectDepsReport> getProjectDependencies(Path projectFolder) {
         Promise<ProjectDepsReport> promise = Promise.promise();
 
-        Future<Path> entrypoint = findEntryPointFolder(projectFolder);
+        Future<Path> entrypoint = findSrcFolder(projectFolder).compose(this::findEntryPointFolder);
 
         Future<Set<PackageDepsReport>> packageReports = entrypoint.compose(ep -> {
             List<Future<PackageDepsReport>> packagePromise = new ArrayList<>();
@@ -193,41 +189,44 @@ public class DependencyAnalyserLib {
         return promise.future();
     }
 
+    private Future<Path> findSrcFolder(Path startingPath) {
+        Promise<Path> promise = Promise.promise();
+
+        vertx.executeBlocking(() -> {
+            Path srcFolder;
+            try (Stream<Path> firstLevelDirs = Files.list(startingPath)) {
+                srcFolder = firstLevelDirs
+                        .filter(Files::isDirectory)
+                        .filter(path -> path.getFileName().toString().equals(SRC))
+                        .findFirst()
+                        .orElseThrow(() -> new RuntimeException(SRC + " folder not found in " + startingPath));
+                return srcFolder;
+            } catch (IOException e) {
+                throw new RuntimeException("Error accessing file system: " + e.getMessage(), e);
+            }
+        }).onSuccess(promise::complete)
+        .onFailure(promise::fail);
+
+        return promise.future();
+    }
+
     private Future<Path> findEntryPointFolder(Path startingPath) {
         Promise<Path> promise = Promise.promise();
 
         vertx.executeBlocking(() -> {
-            try {
-                // Cerca la cartella "src"
-                Path srcFolder;
-                try (Stream<Path> firstLevelDirs = Files.list(startingPath)) {
-                    srcFolder = firstLevelDirs
-                            .filter(Files::isDirectory)
-                            .filter(path -> path.getFileName().toString().equals("src"))
-                            .findFirst()
-                            .orElseThrow(() -> new RuntimeException("'src' folder not found in " + startingPath));
-                }
-
-                // Cerca ENTRY_POINT_FOLDER_NAME dentro "src"
-                Path entryPointFolder;
-                try (Stream<Path> nestedDirs = Files.walk(srcFolder)) {
-                    entryPointFolder = nestedDirs
-                            .filter(Files::isDirectory)
-                            .filter(path -> path.getFileName().toString().equals(ENTRY_POINT_FOLDER_NAME))
-                            .findFirst()
-                            .orElseThrow(() -> new RuntimeException("'" + ENTRY_POINT_FOLDER_NAME + "' folder not found inside src"));
-                }
-
-                return entryPointFolder;
-
-            } catch (IOException e) {
-                throw new RuntimeException("Error accessing file system: " + e.getMessage(), e);
-            } catch (RuntimeException e) {
-                throw e;
-            }
-
-        }).onSuccess(promise::complete)
-        .onFailure(promise::fail);
+                    Path entrypoint;
+                    try (Stream<Path> paths = Files.walk(startingPath)) {
+                        entrypoint = paths
+                                .filter(Files::isDirectory)
+                                .filter(path -> path.getFileName().toString().equals(ENTRY_POINT_FOLDER_NAME))
+                                .findFirst()
+                                .orElseThrow(() -> new RuntimeException(ENTRY_POINT_FOLDER_NAME + " folder not found in " + startingPath));
+                        return entrypoint;
+                    } catch (IOException e) {
+                        throw new RuntimeException("Error accessing file system: " + e.getMessage(), e);
+                    }
+                }).onSuccess(promise::complete)
+                .onFailure(promise::fail);
 
         return promise.future();
     }
