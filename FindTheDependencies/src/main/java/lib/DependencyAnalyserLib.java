@@ -1,5 +1,7 @@
 package lib;
 
+import com.github.javaparser.JavaParser;
+import com.github.javaparser.ParserConfiguration;
 import com.github.javaparser.StaticJavaParser;
 import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.PackageDeclaration;
@@ -195,23 +197,37 @@ public class DependencyAnalyserLib {
         Promise<Path> promise = Promise.promise();
 
         vertx.executeBlocking(() -> {
-                try (Stream<Path> paths = Files.walk(startingPath)) {
-                    Optional<Path> srcFolder = paths
+            try {
+                // Cerca la cartella "src"
+                Path srcFolder;
+                try (Stream<Path> firstLevelDirs = Files.list(startingPath)) {
+                    srcFolder = firstLevelDirs
+                            .filter(Files::isDirectory)
+                            .filter(path -> path.getFileName().toString().equals("src"))
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("'src' folder not found in " + startingPath));
+                }
+
+                // Cerca ENTRY_POINT_FOLDER_NAME dentro "src"
+                Path entryPointFolder;
+                try (Stream<Path> nestedDirs = Files.walk(srcFolder)) {
+                    entryPointFolder = nestedDirs
                             .filter(Files::isDirectory)
                             .filter(path -> path.getFileName().toString().equals(ENTRY_POINT_FOLDER_NAME))
-                            .findFirst();
-
-                    if (srcFolder.isPresent()) {
-                        return srcFolder.get();
-                    } else {
-                        throw new RuntimeException(ENTRY_POINT_FOLDER_NAME + " folder not found.");
-                    }
-
-                } catch (IOException e) {
-                    throw new RuntimeException("Error walking file tree: " + e.getMessage(), e);
+                            .findFirst()
+                            .orElseThrow(() -> new RuntimeException("'" + ENTRY_POINT_FOLDER_NAME + "' folder not found inside src"));
                 }
-            }).onSuccess(promise::complete)
-            .onFailure(promise::fail);
+
+                return entryPointFolder;
+
+            } catch (IOException e) {
+                throw new RuntimeException("Error accessing file system: " + e.getMessage(), e);
+            } catch (RuntimeException e) {
+                throw e;
+            }
+
+        }).onSuccess(promise::complete)
+        .onFailure(promise::fail);
 
         return promise.future();
     }
