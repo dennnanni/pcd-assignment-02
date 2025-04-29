@@ -1,14 +1,14 @@
-package lib.reports;
+package reports;
 
 import java.util.Set;
 
-public class ClassDepReport {
+public class ClassDepsReport {
 
     private final String className;
     private final String packageName;
     private final Set<String> dependencies;
 
-    public ClassDepReport(String className, String packageName, Set<String> dependencies) {
+    public ClassDepsReport(String className, String packageName, Set<String> dependencies) {
         this.className = className;
         this.packageName = packageName;
         this.dependencies = dependencies;

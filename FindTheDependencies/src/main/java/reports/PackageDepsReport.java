@@ -1,4 +1,4 @@
-package lib.reports;
+package reports;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -7,15 +7,15 @@ public class PackageDepsReport {
 
     public String packageName;
     public Set<PackageDepsReport> packages;
-    public Set<ClassDepReport> classes;
+    public Set<ClassDepsReport> classes;
 
-    public PackageDepsReport(String packageName, Set<ClassDepReport> classes, Set<PackageDepsReport> packages) {
+    public PackageDepsReport(String packageName, Set<ClassDepsReport> classes, Set<PackageDepsReport> packages) {
         this.packageName = packageName;
         this.classes = classes;
         this.packages = packages;
     }
 
-    public PackageDepsReport(String packageName, Set<ClassDepReport> classes) {
+    public PackageDepsReport(String packageName, Set<ClassDepsReport> classes) {
         this.packageName = packageName;
         this.classes = classes;
         this.packages = new HashSet<>();
@@ -29,7 +29,7 @@ public class PackageDepsReport {
         return packages;
     }
 
-    public Set<ClassDepReport> getClasses() {
+    public Set<ClassDepsReport> getClasses() {
         return classes;
     }
 

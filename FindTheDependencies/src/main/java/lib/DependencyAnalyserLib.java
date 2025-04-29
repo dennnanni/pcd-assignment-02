@@ -5,9 +5,9 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.nodeTypes.NodeWithName;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import lib.reports.ClassDepReport;
-import lib.reports.PackageDepsReport;
-import lib.reports.ProjectDepsReport;
+import reports.ClassDepsReport;
+import reports.PackageDepsReport;
+import reports.ProjectDepsReport;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -29,8 +29,8 @@ public class DependencyAnalyserLib {
         this.vertx = vertx;
     }
 
-    public Future<ClassDepReport> getClassDependencies(Path classSrcFile) {
-        Promise<ClassDepReport> reportPromise = Promise.promise();
+    public Future<ClassDepsReport> getClassDependencies(Path classSrcFile) {
+        Promise<ClassDepsReport> reportPromise = Promise.promise();
 
         readSourceFile(classSrcFile)
             .compose(this::parseCompilationUnitAsync)
@@ -39,7 +39,7 @@ public class DependencyAnalyserLib {
                 String packageName = packageAndDeps.keySet().stream().findFirst()
                         .orElse(DEFAULT_PACKAGE);
                 String className = classSrcFile.getFileName().toString().replace(".java", "");
-                ClassDepReport report = new ClassDepReport(className, packageName, packageAndDeps.get(packageName));
+                ClassDepsReport report = new ClassDepsReport(className, packageName, packageAndDeps.get(packageName));
                 reportPromise.complete(report);
             })
             .onFailure(reportPromise::fail);
@@ -87,23 +87,25 @@ public class DependencyAnalyserLib {
     public Future<PackageDepsReport> getPackageDependencies(Path packageSrcFolder) {
         Promise<PackageDepsReport> promise = Promise.promise();
 
-        Future<Set<ClassDepReport>> classReports = getFilesOrDirectoriesPaths(packageSrcFolder, true)
+        Future<Set<Path>> paths = getFilesOrDirectoriesPaths(packageSrcFolder, true);
+
+        Future<Set<ClassDepsReport>> classReports = paths
             .compose(javaFiles -> {
-                List<Future<ClassDepReport>> dependencyFutures = new ArrayList<>();
+                List<Future<ClassDepsReport>> dependencyFutures = new ArrayList<>();
                 for (Path file : javaFiles) {
                     dependencyFutures.add(getClassDependencies(file));
                 }
                 return Future.all(dependencyFutures);
             }).map(cf -> {
-                Set<ClassDepReport> classesReport = new HashSet<>();
+                Set<ClassDepsReport> classesReport = new HashSet<>();
                 for (int i = 0; i < cf.size(); i++) {
-                    ClassDepReport report = cf.resultAt(i);
+                    ClassDepsReport report = cf.resultAt(i);
                     classesReport.add(report);
                 }
                 return classesReport;
             });
 
-        Future<Set<PackageDepsReport>> packageReports = getFilesOrDirectoriesPaths(packageSrcFolder, false)
+        Future<Set<PackageDepsReport>> packageReports = paths
                 .compose(directories -> {
                     List<Future<PackageDepsReport>> dependencyFutures = new ArrayList<>();
                     for (Path dir : directories) {
@@ -120,7 +122,7 @@ public class DependencyAnalyserLib {
                 });
 
         Future.all(classReports, packageReports).onSuccess(cf -> {
-            Set<ClassDepReport> classes = cf.resultAt(0);
+            Set<ClassDepsReport> classes = cf.resultAt(0);
             Set<PackageDepsReport> packages = cf.resultAt(1);
             String packageName = packageSrcFolder.getFileName().toString();
             PackageDepsReport packageReport = new PackageDepsReport(packageName, classes, packages);
@@ -174,8 +176,8 @@ public class DependencyAnalyserLib {
             });
         });
 
-        Future<Set<ClassDepReport>> classReports = entrypoint.compose(ep -> {
-            List<Future<ClassDepReport>> classPromise = new ArrayList<>();
+        Future<Set<ClassDepsReport>> classReports = entrypoint.compose(ep -> {
+            List<Future<ClassDepsReport>> classPromise = new ArrayList<>();
             try (Stream<Path> paths = Files.list(ep)) {
                 paths.filter(Files::isRegularFile)
                         .filter(path -> path.toString().endsWith(".java"))
@@ -185,9 +187,9 @@ public class DependencyAnalyserLib {
             }
 
             return Future.all(classPromise).map(cf -> {
-                Set<ClassDepReport> classes = new HashSet<>();
+                Set<ClassDepsReport> classes = new HashSet<>();
                 for (int i = 0; i < cf.size(); i++) {
-                    ClassDepReport report = cf.resultAt(i);
+                    ClassDepsReport report = cf.resultAt(i);
                     classes.add(report);
                 }
                 return classes;
@@ -196,7 +198,7 @@ public class DependencyAnalyserLib {
 
         Future.all(packageReports, classReports).onSuccess(cf -> {
             Set<PackageDepsReport> packages = new HashSet<>();
-            Set<ClassDepReport> classes = cf.resultAt(1);
+            Set<ClassDepsReport> classes = cf.resultAt(1);
             packages.add(new PackageDepsReport(entrypoint.result().getFileName().toString(), classes, cf.resultAt(0)));
 
             ProjectDepsReport projectReport = new ProjectDepsReport(projectFolder.getFileName().toString(), packages);

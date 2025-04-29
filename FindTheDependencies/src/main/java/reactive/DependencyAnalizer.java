@@ -1,4 +1,4 @@
-package gui;
+package reactive;
 
 public class DependencyAnalizer {
 }

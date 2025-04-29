@@ -3,9 +3,9 @@ package lib;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import lib.reports.ClassDepReport;
-import lib.reports.PackageDepsReport;
-import lib.reports.ProjectDepsReport;
+import reports.ClassDepsReport;
+import reports.PackageDepsReport;
+import reports.ProjectDepsReport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
@@ -34,7 +34,7 @@ public class TestAsynchronousLib {
         // Call the getClassDependencies method and handle the result
         dependencyAnalyzer.getClassDependencies(classSrcFile).onComplete(ar -> {
             if (ar.succeeded()) {
-                ClassDepReport report = ar.result();
+                ClassDepsReport report = ar.result();
                 assertEquals("BoidsSimulator", report.getClassName());
                 assertEquals("pcd.ass01.threads", report.getPackageName());
                 assertTrue(report.getDependencies().containsAll(List.of("BoidsModel", "Barrier", "SimulationStateMonitor", "SyncWorkersMonitor")));
@@ -57,7 +57,7 @@ public class TestAsynchronousLib {
                 PackageDepsReport report = ar.result();
                 assertEquals("tasks", report.getPackageName());
                 var classNames = report.getClasses().stream()
-                        .map(ClassDepReport::getClassName)
+                        .map(ClassDepsReport::getClassName)
                         .toList();
                 assertTrue(classNames.containsAll(List.of("Barrier", "Boid", "BoidsModel", "SimulationStateMonitor", "BoidsView", "UpdatePositionTask", "UpdateVelocityTask")));
                 testContext.completeNow();
@@ -100,7 +100,7 @@ public class TestAsynchronousLib {
         // Call the getClassDependencies method and handle the result
         dependencyAnalyzer.getClassDependencies(classSrcFile).onComplete(ar -> {
             if (ar.succeeded()) {
-                ClassDepReport report = ar.result();
+                ClassDepsReport report = ar.result();
                 System.out.println("Class Name: " + report.getClassName());
                 System.out.println("Package Name: " + report.getPackageName());
                 System.out.println("Dependencies: " + report.getDependencies());
@@ -133,7 +133,7 @@ public class TestAsynchronousLib {
         System.out.println("Package Name: " + packageReport.getPackageName());
         System.out.println("Package Dependencies: " + packageReport.getClasses());
         System.out.println("------------");
-        for (ClassDepReport classReport : packageReport.getClasses()) {
+        for (ClassDepsReport classReport : packageReport.getClasses()) {
             System.out.println("Class Name: " + classReport.getClassName());
             System.out.println("Package Name: " + classReport.getPackageName());
             System.out.println("Dependencies: " + classReport.getDependencies());
