@@ -18,13 +18,13 @@ public class DependencyAnalyzer {
         frame.setSize(1000, 800);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        DefaultListModel<String> listModel = new DefaultListModel<>();
-        JList<String> lista = new JList<>(listModel);
+        DefaultListModel<Dependency> listModel = new DefaultListModel<>();
+        JList<Dependency> lista = new JList<>(listModel);
         JScrollPane scrollPane = new JScrollPane(lista);
         frame.getContentPane().add(scrollPane, BorderLayout.CENTER);
         DependencyAnalizerReactive depReactive = new DependencyAnalizerReactive();
 
-        Path root = Path.of("src\\main\\java");
+        Path root = Path.of("src\\main\\java\\lib");
 
         JButton analyzeButton = new JButton("Analyze");
         analyzeButton.addActionListener(e -> {
