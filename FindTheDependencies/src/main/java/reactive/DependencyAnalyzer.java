@@ -11,7 +11,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 
-public class DependencyAnalizer {
+public class DependencyAnalyzer {
 
     public static void main(String[] args) {
         JFrame frame = new JFrame("Dependency Analyzer");
