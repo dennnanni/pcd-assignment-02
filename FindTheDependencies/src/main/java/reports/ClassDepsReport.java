@@ -1,5 +1,6 @@
 package reports;
 
+import java.util.HashSet;
 import java.util.Set;
 
 public class ClassDepsReport {
@@ -11,7 +12,7 @@ public class ClassDepsReport {
     public ClassDepsReport(String className, String packageName, Set<String> dependencies) {
         this.className = className;
         this.packageName = packageName;
-        this.dependencies = dependencies;
+        this.dependencies = new HashSet<>(dependencies);
     }
 
     public String getClassName() {
@@ -24,5 +25,9 @@ public class ClassDepsReport {
 
     public Set<String> getDependencies() {
         return dependencies;
+    }
+
+    public void addDependency(String dependency) {
+        dependencies.add(dependency);
     }
 }
