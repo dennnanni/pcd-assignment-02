@@ -34,11 +34,14 @@ public class DependencyAnalyzerController {
     public void onAnalyze() {
         if (rootPath == null) return;
         ui.clearAll();
-        Flowable<Dependency> stream = engine.analyzePath(rootPath).share();
+        Flowable<Dependency> stream = engine.analyzePath(rootPath);
 
-        stream.subscribe(dep -> SwingUtilities.invokeLater(() -> ui.addClass(dep.className())));
-        stream.subscribe(dep -> { SwingUtilities.invokeLater(() ->
-            ui.addDependency(dep.dependency()));
+        //stream.subscribe(dep -> SwingUtilities.invokeLater(() -> ui.addClass(dep.className())));
+        stream.subscribe(dep -> {
+            SwingUtilities.invokeLater(() -> {
+                ui.addDependency(dep.dependency());
+                ui.addClass(dep.className());
+            });
             if (mapClassDeps.containsKey(dep.className())) {
                 mapClassDeps.get(dep.className()).addDependency(dep.dependency());
             } else {

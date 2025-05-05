@@ -80,9 +80,11 @@ public class DependencyAnalyzerApp {
     }
 
     public void clearAll() {
-        listModelClasses.clear();
-        listModelDependencies.clear();
-        classesButton.setText("0");
-        dependenciesButton.setText("0");
+        SwingUtilities.invokeLater(() -> {
+            listModelClasses.clear();
+            listModelDependencies.clear();
+            classesButton.setText("0");
+            dependenciesButton.setText("0");
+        });
     }
 }
