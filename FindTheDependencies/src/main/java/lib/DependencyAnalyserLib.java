@@ -88,6 +88,7 @@ public class DependencyAnalyserLib {
         Promise<PackageDepsReport> promise = Promise.promise();
 
         Future<Set<Path>> paths = getFilesOrDirectoriesPaths(packageSrcFolder, true);
+        Future<Set<Path>> dirPaths = getFilesOrDirectoriesPaths(packageSrcFolder, false);
 
         Future<Set<ClassDepsReport>> classReports = paths
             .compose(javaFiles -> {
@@ -105,7 +106,7 @@ public class DependencyAnalyserLib {
                 return classesReport;
             });
 
-        Future<Set<PackageDepsReport>> packageReports = paths
+        Future<Set<PackageDepsReport>> packageReports = dirPaths
                 .compose(directories -> {
                     List<Future<PackageDepsReport>> dependencyFutures = new ArrayList<>();
                     for (Path dir : directories) {

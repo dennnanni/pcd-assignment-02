@@ -29,7 +29,7 @@ public class TestAsynchronousLib {
         DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
 
         // Define the path to the source file
-        Path classSrcFile = Path.of(currentPath + "\\pcd-assignment-01\\src\\main\\java\\pcd\\ass01\\threads\\BoidsSimulator.java");
+        Path classSrcFile = Path.of(currentPath + "\\test-project\\src\\main\\java\\pcd\\ass01\\threads\\BoidsSimulator.java");
 
         // Call the getClassDependencies method and handle the result
         dependencyAnalyzer.getClassDependencies(classSrcFile).onComplete(ar -> {
@@ -50,7 +50,7 @@ public class TestAsynchronousLib {
     public void testGetPackageDependencies(Vertx vertx, VertxTestContext testContext) {
         DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
 
-        Path packageSrc = Path.of(currentPath + "\\pcd-assignment-01\\src\\main\\java\\pcd\\ass01\\tasks");
+        Path packageSrc = Path.of(currentPath + "\\test-project\\src\\main\\java\\pcd\\ass01\\tasks");
 
         dependencyAnalyzer.getPackageDependencies(packageSrc).onComplete(ar -> {
             if (ar.succeeded()) {
@@ -71,12 +71,12 @@ public class TestAsynchronousLib {
     public void testGetProjectDependencies(Vertx vertx, VertxTestContext testContext) {
         DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
 
-        Path projectSrc = Path.of(currentPath + "\\pcd-assignment-01");
+        Path projectSrc = Path.of(currentPath + "\\test-project");
 
         dependencyAnalyzer.getProjectDependencies(projectSrc).onComplete(ar -> {
             if (ar.succeeded()) {
                 ProjectDepsReport report = ar.result();
-                assertEquals("pcd-assignment-01", report.getProjectName());
+                assertEquals("test-project", report.getProjectName());
                 var packageNames = report.getPackages().stream()
                         .map(PackageDepsReport::getPackageName)
                         .toList();
@@ -95,7 +95,7 @@ public class TestAsynchronousLib {
         DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
 
         // Define the path to the source file
-        Path classSrcFile = Path.of(currentPath + "\\pcd-assignment-01\\src\\main\\java\\pcd\\ass01\\threads\\BoidsSimulator.java");
+        Path classSrcFile = Path.of(currentPath + "\\test-project\\src\\main\\java\\pcd\\ass01\\threads\\BoidsSimulator.java");
 
         // Call the getClassDependencies method and handle the result
         dependencyAnalyzer.getClassDependencies(classSrcFile).onComplete(ar -> {
@@ -115,7 +115,7 @@ public class TestAsynchronousLib {
     public void testPrintPackageDependencies(Vertx vertx, VertxTestContext testContext) {
         DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
 
-        Path packageSrc = Path.of(currentPath + "\\pcd-assignment-01\\src\\main\\java");
+        Path packageSrc = Path.of(currentPath + "\\test-project\\src\\main\\java");
 
         dependencyAnalyzer.getPackageDependencies(packageSrc).onComplete(ar -> {
             if (ar.succeeded()) {
@@ -148,7 +148,7 @@ public class TestAsynchronousLib {
     public void testPrintProjectDependencies(Vertx vertx, VertxTestContext testContext) {
         DependencyAnalyserLib dependencyAnalyzer = new DependencyAnalyserLib(vertx);
 
-        Path projectSrc = Path.of(currentPath + "\\pcd-assignment-01");
+        Path projectSrc = Path.of(currentPath + "\\test-project");
 
         dependencyAnalyzer.getProjectDependencies(projectSrc).onComplete(ar -> {
             if (ar.succeeded()) {
