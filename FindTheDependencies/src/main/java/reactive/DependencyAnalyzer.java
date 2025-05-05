@@ -1,5 +1,7 @@
 package reactive;
 
+import io.reactivex.rxjava3.core.BackpressureStrategy;
+import io.reactivex.rxjava3.core.Flowable;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import reports.ClassDepsReport;
@@ -85,51 +87,48 @@ public class DependencyAnalyzer {
 
     private static void interfaceUpdate(Path root) {
         listModelClasses.clear();
-        try (Stream<Path> files = Files.walk(root)) {
-            Observable<Dependency> dependencyObservable = Observable.fromIterable(files
-                            .filter(p -> p.toString().endsWith(".java"))
-                            .toList())
-                    .flatMap(path ->
-                            depReactive.parseClassDependenciesIncrementally(path)
-                                    .subscribeOn(Schedulers.io())
-                    )
-                    .observeOn(Schedulers.trampoline());
+        Flowable<Dependency> dependencyFlowable = Flowable.using(
+                () -> Files.walk(root),
+                files -> Flowable.fromStream(files)
+                        .filter(p -> p.toString().endsWith(".java"))
+                        .flatMap(path ->
+                                depReactive.parseClassDependenciesIncrementally(path)
+                                        .subscribeOn(Schedulers.io())
 
-            // Subcription to update classes list
-            dependencyObservable.subscribe(
-                    riga -> SwingUtilities.invokeLater(() -> {
-                        if (!listModelClasses.contains(riga.className())) {
-                            listModelClasses.addElement(riga.className());
-                        }
-                    }),
-                    Throwable::printStackTrace,
-                    () -> System.out.println("Analisi completata.")
-            );
-
-            // Subscription to update dependencies list
-            dependencyObservable.subscribe(riga -> {
-                if (riga.dependency() != null) {
-                    SwingUtilities.invokeLater(() -> listModelDependencies.addElement(riga.dependency()));
-                }
-            }, Throwable::printStackTrace);
-
-            // Subscription to update class reports
-            dependencyObservable.subscribe(riga -> {
-                if (mapClassDeps.containsKey(riga.className())) {
-                    mapClassDeps.get(riga.className()).addDependency(riga.dependency());
-                } else {
-                    ClassDepsReport classDepsReport = new ClassDepsReport(riga.className(), riga.packageName(), Set.of(riga.dependency()));
-                    mapClassDeps.put(riga.className(), classDepsReport);
-                }
-            },
-                    Throwable::printStackTrace
-            );
+                        ),
+                Stream::close
+        ).observeOn(Schedulers.trampoline());
 
 
-        } catch (IOException exc) {
-            exc.printStackTrace();
-        }
+        // Subcription to update classes list
+        dependencyFlowable.subscribe(
+                riga -> SwingUtilities.invokeLater(() -> {
+                    if (!listModelClasses.contains(riga.className())) {
+                        listModelClasses.addElement(riga.className());
+                    }
+                }),
+                Throwable::printStackTrace,
+                () -> System.out.println("Analisi completata.")
+        );
 
+        // Subscription to update dependencies list
+        dependencyFlowable.subscribe(riga -> {
+            if (riga.dependency() != null) {
+                SwingUtilities.invokeLater(() -> listModelDependencies.addElement(riga.dependency()));
+            }
+        }, Throwable::printStackTrace);
+
+        // Subscription to update class reports
+        dependencyFlowable.subscribe(riga -> {
+            if (mapClassDeps.containsKey(riga.className())) {
+                mapClassDeps.get(riga.className()).addDependency(riga.dependency());
+            } else {
+                ClassDepsReport classDepsReport = new ClassDepsReport(riga.className(), riga.packageName(), Set.of(riga.dependency()));
+                mapClassDeps.put(riga.className(), classDepsReport);
+            }
+        },
+                Throwable::printStackTrace
+        );
     }
 
     private static void drawSelectPathControl(JPanel mainPanel) {
