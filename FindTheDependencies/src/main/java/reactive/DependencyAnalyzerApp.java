@@ -1,146 +1,88 @@
 package reactive;
 
-import io.reactivex.rxjava3.core.BackpressureStrategy;
-import io.reactivex.rxjava3.core.Flowable;
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.schedulers.Schedulers;
-import reports.ClassDepsReport;
-
 import javax.swing.*;
 import java.awt.*;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Stream;
 
 
 public class DependencyAnalyzerApp {
-    private static DefaultListModel<String> listModelClasses = new DefaultListModel<>();
-    private static DefaultListModel<String> listModelDependencies = new DefaultListModel<>();
-    private static ConcurrentHashMap<String, ClassDepsReport> mapClassDeps = new ConcurrentHashMap<>();
-    private static Path rootPath = null;
-    private static DependencyAnalizerReactive depReactive = new DependencyAnalizerReactive();
+    private DefaultListModel<String> listModelClasses = new DefaultListModel<>();
+    private DefaultListModel<String> listModelDependencies = new DefaultListModel<>();
+    private JButton classesButton = new JButton("0");
+    private JButton dependenciesButton = new JButton("0");
+    private JLabel pathField = new JLabel();
+    private DependencyAnalyzerController controller;
 
+    public void setController(DependencyAnalyzerController controller) {
+        this.controller = controller;
+    }
 
     public void startApp() {
         JFrame frame = new JFrame("Dependency Analyzer");
         frame.setSize(1000, 800);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        JPanel mainPanel = new JPanel(new BorderLayout());
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.add(buildControlPanel(), BorderLayout.NORTH);
+        panel.add(buildSplitPanel(), BorderLayout.CENTER);
 
-        drawControlPanel(mainPanel);
-        drawSplitPanel(mainPanel);
-
-        frame.setContentPane(mainPanel);
+        frame.setContentPane(panel);
 
         frame.setVisible(true);
     }
 
-    private void drawSplitPanel(JPanel mainPanel) {
-        JScrollPane leftScroll = new JScrollPane(new JList<>(listModelClasses));
-        JScrollPane rightScroll = new JScrollPane(new JList<>(listModelDependencies));
 
-        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, leftScroll, rightScroll);
-        splitPane.setResizeWeight(0.5);
-        splitPane.setDividerLocation(0.5);
+    private JPanel buildControlPanel() {
+        JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
+        JButton selectPathButton = new JButton("Select Path");
 
-        mainPanel.add(splitPane, BorderLayout.CENTER);
-    }
-
-    private void drawControlPanel(JPanel mainPanel) {
-        JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-
-        drawSelectPathControl(controlPanel);
+        selectPathButton.addActionListener(e -> controller.onSelectPath());
 
         JButton analyzeButton = new JButton("Analyze");
-        analyzeButton.addActionListener(e -> {
-            if (rootPath != null) {
-                interfaceUpdate(rootPath);
-            }
-        });
+        analyzeButton.addActionListener(e -> controller.onAnalyze());
 
-        JButton classesButton = new JButton("0");
-        classesButton.addActionListener(e -> {
-            // Implement the action for the Classes button
-            // Reset della visualizzazione
-        });
+        panel.add(selectPathButton);
+        panel.add(pathField);
+        panel.add(new JLabel("Classes: "));
+        panel.add(classesButton);
+        panel.add(new JLabel("Dependencies: "));
+        panel.add(dependenciesButton);
+        panel.add(analyzeButton);
 
-        JButton dependenciesButton = new JButton("0");
-        dependenciesButton.addActionListener(e -> {
-            // Implement the action for the Dependencies button
-            // Reset della visualizzazione
-        });
-
-        controlPanel.add(new JLabel("Classes: "));
-        controlPanel.add(classesButton);
-        controlPanel.add(new JLabel("Dependencies: "));
-        controlPanel.add(dependenciesButton);
-        controlPanel.add(analyzeButton);
-
-        mainPanel.add(controlPanel, BorderLayout.NORTH);
+        return panel;
     }
 
-    private void interfaceUpdate(Path root) {
+    private JSplitPane buildSplitPanel() {
+        JList<String> classList = new JList<>(listModelClasses);
+        JList<String> depList = new JList<>(listModelDependencies);
+
+        JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
+                new JScrollPane(classList), new JScrollPane(depList));
+        splitPane.setResizeWeight(0.5);
+        splitPane.setDividerLocation(0.5);
+        return splitPane;
+    }
+
+
+    public void updatePathLabel(String path) {
+        pathField.setText(path);
+    }
+
+    public void addClass(String className) {
+        if (!listModelClasses.contains(className)) {
+            listModelClasses.addElement(className);
+            classesButton.setText(String.valueOf(listModelClasses.size()));
+        }
+    }
+
+    public void addDependency(String dep) {
+        listModelDependencies.addElement(dep);
+        dependenciesButton.setText(String.valueOf(listModelDependencies.size()));
+    }
+
+    public void clearAll() {
         listModelClasses.clear();
-        Flowable<Dependency> dependencyFlowable = Flowable.using(
-                () -> Files.walk(root),
-                files -> Flowable.fromStream(files)
-                        .filter(p -> p.toString().endsWith(".java"))
-                        .flatMap(path ->
-                                depReactive.parseClassDependenciesIncrementally(path)
-                                        .subscribeOn(Schedulers.io())
-                        ),
-                Stream::close
-        ).observeOn(Schedulers.trampoline());
-
-        Flowable<Dependency> sharedFlowable = dependencyFlowable.share();
-        // Subcription to update classes list
-        sharedFlowable.subscribe(
-                riga -> SwingUtilities.invokeLater(() -> {
-                    if (!listModelClasses.contains(riga.className())) {
-                        listModelClasses.addElement(riga.className());
-                    }
-                }),
-                Throwable::printStackTrace,
-                () -> System.out.println("Analisi completata.")
-        );
-
-        // Subscription to update dependencies list
-        sharedFlowable.subscribe(riga -> {
-            if (riga.dependency() != null) {
-                SwingUtilities.invokeLater(() -> listModelDependencies.addElement(riga.dependency()));
-
-                if (mapClassDeps.containsKey(riga.className())) {
-                    mapClassDeps.get(riga.className()).addDependency(riga.dependency());
-                } else {
-                    ClassDepsReport classDepsReport = new ClassDepsReport(riga.className(), riga.packageName(), Set.of(riga.dependency()));
-                    mapClassDeps.put(riga.className(), classDepsReport);
-                }
-            }
-        },
-                Throwable::printStackTrace
-        );
-    }
-
-    private void drawSelectPathControl(JPanel mainPanel) {
-        JButton selectPathButton = new JButton("Select path");
-        JLabel pathField = new JLabel();
-        selectPathButton.addActionListener(e -> {
-            JFileChooser fileChooser = new JFileChooser();
-            fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-            int returnValue = fileChooser.showOpenDialog(null);
-            if (returnValue == JFileChooser.APPROVE_OPTION) {
-                Path selectedPath = fileChooser.getSelectedFile().toPath();
-                rootPath = selectedPath;
-                pathField.setText(selectedPath.toString());
-            }
-        });
-        mainPanel.add(selectPathButton);
-        mainPanel.add(pathField);
+        listModelDependencies.clear();
+        classesButton.setText("0");
+        dependenciesButton.setText("0");
     }
 }
