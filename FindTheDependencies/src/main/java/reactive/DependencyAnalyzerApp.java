@@ -10,20 +10,20 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
 
-public class DependencyAnalyzer {
+public class DependencyAnalyzerApp {
     private static DefaultListModel<String> listModelClasses = new DefaultListModel<>();
     private static DefaultListModel<String> listModelDependencies = new DefaultListModel<>();
     private static Map<String, ClassDepsReport> mapClassDeps = new HashMap<>();
     private static Path rootPath = null;
     private static DependencyAnalizerReactive depReactive = new DependencyAnalizerReactive();
 
-    public static void main(String[] args) {
+
+    public void startApp() {
         JFrame frame = new JFrame("Dependency Analyzer");
         frame.setSize(1000, 800);
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -38,7 +38,7 @@ public class DependencyAnalyzer {
         frame.setVisible(true);
     }
 
-    private static void drawSplitPanel(JPanel mainPanel) {
+    private void drawSplitPanel(JPanel mainPanel) {
         JScrollPane leftScroll = new JScrollPane(new JList<>(listModelClasses));
         JScrollPane rightScroll = new JScrollPane(new JList<>(listModelDependencies));
 
@@ -49,14 +49,13 @@ public class DependencyAnalyzer {
         mainPanel.add(splitPane, BorderLayout.CENTER);
     }
 
-    private static void drawControlPanel(JPanel mainPanel) {
+    private void drawControlPanel(JPanel mainPanel) {
         JPanel controlPanel = new JPanel(new FlowLayout(FlowLayout.LEFT));
 
         drawSelectPathControl(controlPanel);
 
         JButton analyzeButton = new JButton("Analyze");
         analyzeButton.addActionListener(e -> {
-            // Implement the action for the Analyze button
             if (rootPath != null) {
                 interfaceUpdate(rootPath);
             }
@@ -83,7 +82,7 @@ public class DependencyAnalyzer {
         mainPanel.add(controlPanel, BorderLayout.NORTH);
     }
 
-    private static void interfaceUpdate(Path root) {
+    private void interfaceUpdate(Path root) {
         listModelClasses.clear();
         try (Stream<Path> files = Files.walk(root)) {
             Observable<Dependency> dependencyObservable = Observable.fromIterable(files
@@ -132,7 +131,7 @@ public class DependencyAnalyzer {
 
     }
 
-    private static void drawSelectPathControl(JPanel mainPanel) {
+    private void drawSelectPathControl(JPanel mainPanel) {
         JButton selectPathButton = new JButton("Select path");
         JLabel pathField = new JLabel();
         selectPathButton.addActionListener(e -> {
