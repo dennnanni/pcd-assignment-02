@@ -14,13 +14,14 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 
 public class DependencyAnalyzerApp {
     private static DefaultListModel<String> listModelClasses = new DefaultListModel<>();
     private static DefaultListModel<String> listModelDependencies = new DefaultListModel<>();
-    private static Map<String, ClassDepsReport> mapClassDeps = new HashMap<>();
+    private static ConcurrentHashMap<String, ClassDepsReport> mapClassDeps = new ConcurrentHashMap<>();
     private static Path rootPath = null;
     private static DependencyAnalizerReactive depReactive = new DependencyAnalizerReactive();
 
@@ -93,14 +94,13 @@ public class DependencyAnalyzerApp {
                         .flatMap(path ->
                                 depReactive.parseClassDependenciesIncrementally(path)
                                         .subscribeOn(Schedulers.io())
-
                         ),
                 Stream::close
         ).observeOn(Schedulers.trampoline());
 
-
+        Flowable<Dependency> sharedFlowable = dependencyFlowable.share();
         // Subcription to update classes list
-        dependencyFlowable.subscribe(
+        sharedFlowable.subscribe(
                 riga -> SwingUtilities.invokeLater(() -> {
                     if (!listModelClasses.contains(riga.className())) {
                         listModelClasses.addElement(riga.className());
@@ -111,19 +111,16 @@ public class DependencyAnalyzerApp {
         );
 
         // Subscription to update dependencies list
-        dependencyFlowable.subscribe(riga -> {
+        sharedFlowable.subscribe(riga -> {
             if (riga.dependency() != null) {
                 SwingUtilities.invokeLater(() -> listModelDependencies.addElement(riga.dependency()));
-            }
-        }, Throwable::printStackTrace);
 
-        // Subscription to update class reports
-        dependencyFlowable.subscribe(riga -> {
-            if (mapClassDeps.containsKey(riga.className())) {
-                mapClassDeps.get(riga.className()).addDependency(riga.dependency());
-            } else {
-                ClassDepsReport classDepsReport = new ClassDepsReport(riga.className(), riga.packageName(), Set.of(riga.dependency()));
-                mapClassDeps.put(riga.className(), classDepsReport);
+                if (mapClassDeps.containsKey(riga.className())) {
+                    mapClassDeps.get(riga.className()).addDependency(riga.dependency());
+                } else {
+                    ClassDepsReport classDepsReport = new ClassDepsReport(riga.className(), riga.packageName(), Set.of(riga.dependency()));
+                    mapClassDeps.put(riga.className(), classDepsReport);
+                }
             }
         },
                 Throwable::printStackTrace
