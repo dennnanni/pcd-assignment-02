@@ -34,12 +34,15 @@ public class DependencyAnalyzerController {
     public void onAnalyze() {
         if (rootPath == null) return;
         ui.clearAll();
+        mapClassDeps = new ConcurrentHashMap<>();
         Flowable<Dependency> stream = engine.analyzePath(rootPath);
 
-        //stream.subscribe(dep -> SwingUtilities.invokeLater(() -> ui.addClass(dep.className())));
         stream.subscribe(dep -> {
+            var flattedDistinctList = mapClassDeps.entrySet().stream().flatMap(m -> m.getValue().getDependencies().stream()).distinct().toList();
             SwingUtilities.invokeLater(() -> {
-                ui.addDependency(dep.dependency());
+                if(!flattedDistinctList.contains(dep.dependency())) {
+                    ui.addDependency(dep.dependency());
+                }
                 ui.addClass(dep.className());
             });
             if (mapClassDeps.containsKey(dep.className())) {
@@ -51,4 +54,3 @@ public class DependencyAnalyzerController {
         });
     }
 }
-

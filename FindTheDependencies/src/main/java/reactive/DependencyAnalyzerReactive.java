@@ -11,7 +11,7 @@ import io.reactivex.rxjava3.core.Flowable;
 
 import java.nio.file.Path;
 
-public class DependencyAnalizerReactive {
+public class DependencyAnalyzerReactive {
 
 //    public record ClassDependency(String className, String packageName, Set<String> usedTypes) {}
 
