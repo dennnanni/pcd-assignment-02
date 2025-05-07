@@ -21,7 +21,7 @@ public class DependencyAnalyzerReactive {
                 CompilationUnit cu = StaticJavaParser.parse(javaFile);
                 String packageName = cu.getPackageDeclaration()
                         .map(NodeWithName::getNameAsString)
-                        .orElse("java");
+                        .orElse(javaFile.getParent().getFileName().toString());
                 String className = cu.findFirst(ClassOrInterfaceDeclaration.class)
                         .map(ClassOrInterfaceDeclaration::getNameAsString).orElse("Anonymous");
 
@@ -30,12 +30,10 @@ public class DependencyAnalyzerReactive {
                         .distinct()
                         .forEach(dep -> emitter.onNext(new Dependency(packageName, className, dep)));
 
-
                 cu.findAll(ObjectCreationExpr.class).stream()
                         .map(ObjectCreationExpr::getTypeAsString)
                         .distinct()
                         .forEach(dep -> emitter.onNext(new Dependency(packageName, className, dep)));
-
 
                 emitter.onComplete();
             } catch (Exception e) {
