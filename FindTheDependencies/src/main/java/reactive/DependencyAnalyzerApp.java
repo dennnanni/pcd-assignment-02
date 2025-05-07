@@ -1,6 +1,8 @@
 package reactive;
 
 import javax.swing.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
 import java.awt.*;
 
 
@@ -11,6 +13,12 @@ public class DependencyAnalyzerApp {
     private JButton dependenciesButton = new JButton("0");
     private JLabel pathField = new JLabel();
     private DependencyAnalyzerController controller;
+
+    // Visualizzazione a gruppi
+    private DefaultMutableTreeNode rootNode = new DefaultMutableTreeNode("Packages");
+    private DefaultTreeModel treeModel = new DefaultTreeModel(rootNode);
+    private JTree classTree = new JTree(treeModel);
+
 
     public void setController(DependencyAnalyzerController controller) {
         this.controller = controller;
@@ -33,8 +41,8 @@ public class DependencyAnalyzerApp {
 
     private JPanel buildControlPanel() {
         JPanel panel = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        JButton selectPathButton = new JButton("Select Path");
 
+        JButton selectPathButton = new JButton("Select Path");
         selectPathButton.addActionListener(e -> controller.onSelectPath());
 
         JButton analyzeButton = new JButton("Analyze");
@@ -52,31 +60,69 @@ public class DependencyAnalyzerApp {
     }
 
     private JSplitPane buildSplitPanel() {
-        JList<String> classList = new JList<>(listModelClasses);
         JList<String> depList = new JList<>(listModelDependencies);
+        JScrollPane classScroll = new JScrollPane(classTree);
+        JScrollPane depScroll = new JScrollPane(depList);
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-                new JScrollPane(classList), new JScrollPane(depList));
+                classScroll, depScroll);
         splitPane.setResizeWeight(0.5);
         splitPane.setDividerLocation(0.5);
         return splitPane;
     }
 
+    public void addClassToTree(String pkg, String className) {
+        SwingUtilities.invokeLater(() -> {
+            DefaultMutableTreeNode packageNode = findOrCreatePackageNode(pkg);
+            if (!isClassPresentInPackage(packageNode, className)) {
+                DefaultMutableTreeNode classNode = new DefaultMutableTreeNode(className);
+                packageNode.add(classNode);
+            }
+            treeModel.reload(); // Refresh view
+            classesButton.setText(String.valueOf(countClasses()));
+        });
+    }
+
+    private boolean isClassPresentInPackage(DefaultMutableTreeNode packageNode, String className) {
+        for (int i = 0; i < packageNode.getChildCount(); i++) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) packageNode.getChildAt(i);
+            if (className.equals(child.getUserObject())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private DefaultMutableTreeNode findOrCreatePackageNode(String pkg) {
+        for (int i = 0; i < rootNode.getChildCount(); i++) {
+            DefaultMutableTreeNode child = (DefaultMutableTreeNode) rootNode.getChildAt(i);
+            if (pkg.equals(child.getUserObject())) {
+                return child;
+            }
+        }
+        // Se non esiste, lo creo
+        DefaultMutableTreeNode newPackageNode = new DefaultMutableTreeNode(pkg);
+        rootNode.add(newPackageNode);
+        return newPackageNode;
+    }
+
+    private int countClasses() {
+        int count = 0;
+        for (int i = 0; i < rootNode.getChildCount(); i++) {
+            count += rootNode.getChildAt(i).getChildCount();
+        }
+        return count;
+    }
 
     public void updatePathLabel(String path) {
         pathField.setText(path);
     }
 
-    public void addClass(String className) {
-        if (!listModelClasses.contains(className)) {
-            listModelClasses.addElement(className);
-            classesButton.setText(String.valueOf(listModelClasses.size()));
-        }
-    }
-
     public void addDependency(String dep) {
-        listModelDependencies.addElement(dep);
-        dependenciesButton.setText(String.valueOf(listModelDependencies.size()));
+        if (!listModelDependencies.contains(dep)) {
+            listModelDependencies.addElement(dep);
+            dependenciesButton.setText(String.valueOf(listModelDependencies.size()));
+        }
     }
 
     public void clearAll() {
