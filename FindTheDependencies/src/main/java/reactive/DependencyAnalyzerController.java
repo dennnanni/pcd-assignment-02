@@ -14,7 +14,7 @@ public class DependencyAnalyzerController {
     private final DependencyAnalyzerApp ui;
     private final DependencyAnalyzerEngine engine;
     private Path rootPath = Path.of(new java.io.File(".").getCanonicalPath(), "test-project");
-    private List<Dependency> mapClassDeps = new ArrayList<>();
+    private List<Dependency> dependencies = new ArrayList<>();
 
     public DependencyAnalyzerController(DependencyAnalyzerApp ui, DependencyAnalyzerEngine engine) throws IOException {
         this.ui = ui;
@@ -36,7 +36,7 @@ public class DependencyAnalyzerController {
         if (rootPath == null) return;
         ui.clearAll();
         Flowable<Dependency> stream = engine.analyzePath(rootPath);
-        mapClassDeps = new ArrayList<>();
+        dependencies = new ArrayList<>();
 
         stream.subscribe(dep -> {
             SwingUtilities.invokeLater(() -> {
@@ -44,12 +44,12 @@ public class DependencyAnalyzerController {
                 ui.addClassToTree(dep.packageName(), dep.className());
             });
             Dependency classDepsReport = new Dependency(dep.packageName(), dep.className(), dep.dependency());
-            mapClassDeps.add(classDepsReport);
+            dependencies.add(classDepsReport);
         });
     }
 
     public void onClassSelected(String packageName, String className) {
-         Set<String> classDeps = mapClassDeps.stream().filter(
+         Set<String> classDeps = dependencies.stream().filter(
                 cdr -> cdr.className().equals(className) &&
                         cdr.packageName().equals(packageName))
                 .map(Dependency::dependency)
@@ -58,7 +58,7 @@ public class DependencyAnalyzerController {
     }
 
     public void onPackageSelected(String packageName) {
-        Set<String> packageDeps = mapClassDeps.stream().filter(
+        Set<String> packageDeps = dependencies.stream().filter(
                 cdr -> cdr.packageName().equals(packageName))
                 .map(Dependency::dependency)
                 .collect(Collectors.toSet());
@@ -66,7 +66,7 @@ public class DependencyAnalyzerController {
     }
 
     public void onRootSelected() {
-        Set<String> rootDeps = mapClassDeps.stream()
+        Set<String> rootDeps = dependencies.stream()
                 .map(Dependency::dependency)
                 .collect(Collectors.toSet());
         ui.updateDependencyPanel(rootDeps);
