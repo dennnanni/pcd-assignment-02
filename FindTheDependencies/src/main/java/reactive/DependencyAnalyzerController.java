@@ -1,20 +1,20 @@
 package reactive;
 
 import io.reactivex.rxjava3.core.Flowable;
-import reports.ClassDepsReport;
 
 import javax.swing.*;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 public class DependencyAnalyzerController {
     private final DependencyAnalyzerApp ui;
     private final DependencyAnalyzerEngine engine;
     private Path rootPath = Path.of(new java.io.File(".").getCanonicalPath(), "test-project");
-    private ConcurrentHashMap<String, ClassDepsReport> mapClassDeps = new ConcurrentHashMap<>();
+    private List<Dependency> mapClassDeps = new ArrayList<>();
 
     public DependencyAnalyzerController(DependencyAnalyzerApp ui, DependencyAnalyzerEngine engine) throws IOException {
         this.ui = ui;
@@ -42,13 +42,19 @@ public class DependencyAnalyzerController {
                 ui.addDependency(dep.dependency());
                 ui.addClassToTree(dep.packageName(), dep.className());
             });
-            if (mapClassDeps.containsKey(dep.packageName())) {
-                mapClassDeps.get(dep.packageName()).addDependency(dep.dependency());
-            } else {
-                ClassDepsReport classDepsReport = new ClassDepsReport(dep.className(), dep.packageName(), Set.of(dep.dependency()));
-                mapClassDeps.put(dep.packageName(), classDepsReport);
-            }
+            Dependency classDepsReport = new Dependency(dep.className(), dep.packageName(), dep.dependency());
+            mapClassDeps.add(classDepsReport);
         });
+    }
+
+    public void onClassSelected(String packageName, String className) {
+         Set<String> classDeps = mapClassDeps.stream().filter(
+                cdr -> cdr.className().equals(className) &&
+                        cdr.packageName().equals(packageName))
+                .map(Dependency::dependency)
+                .collect(Collectors.toSet());
+
+        ui.updateDependencyPanel(classDeps);
     }
 }
 

@@ -4,6 +4,7 @@ import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeModel;
 import java.awt.*;
+import java.util.Set;
 
 
 public class DependencyAnalyzerApp {
@@ -32,6 +33,25 @@ public class DependencyAnalyzerApp {
         JPanel panel = new JPanel(new BorderLayout());
         panel.add(buildControlPanel(), BorderLayout.NORTH);
         panel.add(buildSplitPanel(), BorderLayout.CENTER);
+
+        classTree.addTreeSelectionListener(e -> {
+            DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) classTree.getLastSelectedPathComponent();
+            if (selectedNode == null) return;
+
+            // Verifica se è una classe (foglia)
+            if (selectedNode.isLeaf()) {
+                String className = selectedNode.getUserObject().toString();
+                System.out.println("Classe selezionata: " + className);
+
+                // Se vuoi anche il package:
+                DefaultMutableTreeNode packageNode = (DefaultMutableTreeNode) selectedNode.getParent();
+                String packageName = packageNode.getUserObject().toString();
+                System.out.println("Package: " + packageName);
+
+                // Puoi chiamare il controller o aggiornare l'interfaccia qui
+                controller.onClassSelected(packageName, className);
+            }
+        });
 
         frame.setContentPane(panel);
 
@@ -125,9 +145,20 @@ public class DependencyAnalyzerApp {
         }
     }
 
+    public void updateDependencyPanel(Set<String> deps) {
+        SwingUtilities.invokeLater(() -> {
+            listModelDependencies.clear();
+            for (String dep : deps) {
+                listModelDependencies.addElement(dep);
+            }
+            dependenciesButton.setText(String.valueOf(listModelDependencies.size()));
+        });
+    }
+
     public void clearAll() {
         SwingUtilities.invokeLater(() -> {
-            listModelClasses.clear();
+            rootNode.removeAllChildren();
+            treeModel.reload();
             listModelDependencies.clear();
             classesButton.setText("0");
             dependenciesButton.setText("0");
