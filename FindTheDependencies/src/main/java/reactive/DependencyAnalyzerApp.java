@@ -38,13 +38,18 @@ public class DependencyAnalyzerApp {
             DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) classTree.getLastSelectedPathComponent();
             if (selectedNode == null) return;
 
-            if (selectedNode.isLeaf() && !selectedNode.isRoot()) {
+            if (selectedNode.isRoot()) {
+                controller.onRootSelected();
+            } else if (selectedNode.isLeaf()) {
                 String className = selectedNode.getUserObject().toString();
 
                 DefaultMutableTreeNode packageNode = (DefaultMutableTreeNode) selectedNode.getParent();
                 String packageName = packageNode.getUserObject().toString();
 
                 controller.onClassSelected(packageName, className);
+            } else {
+                String packageName = selectedNode.getUserObject().toString();
+                controller.onPackageSelected(packageName);
             }
         });
 
@@ -115,7 +120,7 @@ public class DependencyAnalyzerApp {
                 return child;
             }
         }
-        // Se non esiste, lo creo
+
         DefaultMutableTreeNode newPackageNode = new DefaultMutableTreeNode(pkg);
         rootNode.add(newPackageNode);
         return newPackageNode;

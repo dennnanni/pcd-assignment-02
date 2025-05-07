@@ -27,7 +27,7 @@ public class DependencyAnalyzerController {
         chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         int result = chooser.showOpenDialog(null);
         if (result == JFileChooser.APPROVE_OPTION) {
-            rootPath = chooser.getSelectedFile().toPath();
+            rootPath = chooser.getSelectedFile().toPath().resolve("src");
             ui.updatePathLabel(rootPath.toString());
         }
     }
@@ -36,6 +36,7 @@ public class DependencyAnalyzerController {
         if (rootPath == null) return;
         ui.clearAll();
         Flowable<Dependency> stream = engine.analyzePath(rootPath);
+        mapClassDeps = new ArrayList<>();
 
         stream.subscribe(dep -> {
             SwingUtilities.invokeLater(() -> {
@@ -54,6 +55,21 @@ public class DependencyAnalyzerController {
                 .map(Dependency::dependency)
                 .collect(Collectors.toSet());
         ui.updateDependencyPanel(classDeps);
+    }
+
+    public void onPackageSelected(String packageName) {
+        Set<String> packageDeps = mapClassDeps.stream().filter(
+                cdr -> cdr.packageName().equals(packageName))
+                .map(Dependency::dependency)
+                .collect(Collectors.toSet());
+        ui.updateDependencyPanel(packageDeps);
+    }
+
+    public void onRootSelected() {
+        Set<String> rootDeps = mapClassDeps.stream()
+                .map(Dependency::dependency)
+                .collect(Collectors.toSet());
+        ui.updateDependencyPanel(rootDeps);
     }
 }
 
