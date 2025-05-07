@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import java.util.stream.Stream;
 
 public class DependencyAnalyzerEngine {
-    private final DependencyAnalizerReactive reactiveParser = new DependencyAnalizerReactive();
+    private final DependencyAnalyzerReactive reactiveParser = new DependencyAnalyzerReactive();
 
     public Flowable<Dependency> analyzePath(Path root) {
         return Flowable.using(
