@@ -42,7 +42,7 @@ public class DependencyAnalyzerController {
                 ui.addDependency(dep.dependency());
                 ui.addClassToTree(dep.packageName(), dep.className());
             });
-            Dependency classDepsReport = new Dependency(dep.className(), dep.packageName(), dep.dependency());
+            Dependency classDepsReport = new Dependency(dep.packageName(), dep.className(), dep.dependency());
             mapClassDeps.add(classDepsReport);
         });
     }
@@ -53,7 +53,6 @@ public class DependencyAnalyzerController {
                         cdr.packageName().equals(packageName))
                 .map(Dependency::dependency)
                 .collect(Collectors.toSet());
-
         ui.updateDependencyPanel(classDeps);
     }
 }

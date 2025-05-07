@@ -38,17 +38,12 @@ public class DependencyAnalyzerApp {
             DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) classTree.getLastSelectedPathComponent();
             if (selectedNode == null) return;
 
-            // Verifica se è una classe (foglia)
-            if (selectedNode.isLeaf()) {
+            if (selectedNode.isLeaf() && !selectedNode.isRoot()) {
                 String className = selectedNode.getUserObject().toString();
-                System.out.println("Classe selezionata: " + className);
 
-                // Se vuoi anche il package:
                 DefaultMutableTreeNode packageNode = (DefaultMutableTreeNode) selectedNode.getParent();
                 String packageName = packageNode.getUserObject().toString();
-                System.out.println("Package: " + packageName);
 
-                // Puoi chiamare il controller o aggiornare l'interfaccia qui
                 controller.onClassSelected(packageName, className);
             }
         });
