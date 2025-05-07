@@ -13,8 +13,6 @@ import java.nio.file.Path;
 
 public class DependencyAnalyzerReactive {
 
-//    public record ClassDependency(String className, String packageName, Set<String> usedTypes) {}
-
     public Flowable<Dependency> parseClassDependenciesIncrementally(Path javaFile) {
         return Flowable.create(emitter -> {
             try {
@@ -22,6 +20,7 @@ public class DependencyAnalyzerReactive {
                 String packageName = cu.getPackageDeclaration()
                         .map(NodeWithName::getNameAsString)
                         .orElse(javaFile.getParent().getFileName().toString());
+
                 String className = cu.findFirst(ClassOrInterfaceDeclaration.class)
                         .map(ClassOrInterfaceDeclaration::getNameAsString).orElse("Anonymous");
 

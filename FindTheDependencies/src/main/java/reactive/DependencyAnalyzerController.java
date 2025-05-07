@@ -40,8 +40,8 @@ public class DependencyAnalyzerController {
 
         stream.subscribe(dep -> {
             SwingUtilities.invokeLater(() -> {
-                ui.addDependency(dep.dependency());
                 ui.addClassToTree(dep.packageName(), dep.className());
+                ui.addDependency(dep.dependency());
             });
             Dependency classDepsReport = new Dependency(dep.packageName(), dep.className(), dep.dependency());
             dependencies.add(classDepsReport);
