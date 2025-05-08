@@ -24,15 +24,8 @@ public class DependencyAnalyzerReactive {
                 String className = cu.findFirst(ClassOrInterfaceDeclaration.class)
                         .map(ClassOrInterfaceDeclaration::getNameAsString).orElse("Anonymous");
 
-                cu.findAll(ClassOrInterfaceType.class).stream()
-                        .map(ClassOrInterfaceType::getNameAsString)
-                        .distinct()
-                        .forEach(dep -> emitter.onNext(new Dependency(packageName, className, dep)));
-
-                cu.findAll(ObjectCreationExpr.class).stream()
-                        .map(ObjectCreationExpr::getTypeAsString)
-                        .distinct()
-                        .forEach(dep -> emitter.onNext(new Dependency(packageName, className, dep)));
+                TypeCollectorVisitor visitor = new TypeCollectorVisitor(packageName, className, emitter);
+                visitor.visit(cu, null);
 
                 emitter.onComplete();
             } catch (Exception e) {
