@@ -5,9 +5,9 @@ import com.github.javaparser.ast.CompilationUnit;
 import com.github.javaparser.ast.nodeTypes.NodeWithName;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
-import reports.ClassDepsReport;
-import reports.PackageDepsReport;
-import reports.ProjectDepsReport;
+import lib.reports.ClassDepsReport;
+import lib.reports.PackageDepsReport;
+import lib.reports.ProjectDepsReport;
 
 import java.io.IOException;
 import java.nio.file.Files;

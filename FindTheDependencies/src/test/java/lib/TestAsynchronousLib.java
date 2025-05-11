@@ -3,9 +3,9 @@ package lib;
 import io.vertx.core.Vertx;
 import io.vertx.junit5.VertxExtension;
 import io.vertx.junit5.VertxTestContext;
-import reports.ClassDepsReport;
-import reports.PackageDepsReport;
-import reports.ProjectDepsReport;
+import lib.reports.ClassDepsReport;
+import lib.reports.PackageDepsReport;
+import lib.reports.ProjectDepsReport;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 

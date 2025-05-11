@@ -1,4 +1,4 @@
-package reports;
+package lib.reports;
 
 import java.util.Set;
 
