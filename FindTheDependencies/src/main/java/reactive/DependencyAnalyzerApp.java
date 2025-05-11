@@ -8,17 +8,16 @@ import java.util.Set;
 
 
 public class DependencyAnalyzerApp {
-    private DefaultListModel<String> listModelClasses = new DefaultListModel<>();
-    private DefaultListModel<String> listModelDependencies = new DefaultListModel<>();
-    private JButton classesButton = new JButton("0");
-    private JButton dependenciesButton = new JButton("0");
-    private JLabel pathField = new JLabel();
+    private final DefaultListModel<String> listModelDependencies = new DefaultListModel<>();
+    private final JButton classesButton = new JButton("0");
+    private final JButton dependenciesButton = new JButton("0");
+    private final JLabel pathField = new JLabel();
     private DependencyAnalyzerController controller;
 
     // Visualizzazione a gruppi
-    private DefaultMutableTreeNode rootNode = new DefaultMutableTreeNode("Packages");
-    private DefaultTreeModel treeModel = new DefaultTreeModel(rootNode);
-    private JTree classTree = new JTree(treeModel);
+    private final DefaultMutableTreeNode rootNode = new DefaultMutableTreeNode("Packages");
+    private final DefaultTreeModel treeModel = new DefaultTreeModel(rootNode);
+    private final JTree classTree = new JTree(treeModel);
 
 
     public void setController(DependencyAnalyzerController controller) {
@@ -71,8 +70,10 @@ public class DependencyAnalyzerApp {
         panel.add(selectPathButton);
         panel.add(pathField);
         panel.add(new JLabel("Classes: "));
+        classesButton.setEnabled(false);
         panel.add(classesButton);
         panel.add(new JLabel("Dependencies: "));
+        dependenciesButton.setEnabled(false);
         panel.add(dependenciesButton);
         panel.add(analyzeButton);
 

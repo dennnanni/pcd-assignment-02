@@ -30,7 +30,7 @@ public class TypeCollectorVisitor extends VoidVisitorAdapter<Set<String>> {
     @Override
     public void visit(ObjectCreationExpr n, Set<String> collector) {
         super.visit(n, collector);
-        n.getType().ifClassOrInterfaceType(t -> emitter.onNext(new Dependency(packageName, className, t.getNameAsString()))); // new Type()
+        n.getType().ifClassOrInterfaceType(t -> emitter.onNext(new Dependency(packageName, className, t.getNameAsString())));
     }
 
     @Override
